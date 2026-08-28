@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengukur Jarak Jalan Kaki</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #2c3e50;
+        }
+        .card {
+            background: #eef2f3;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #27ae60;
+        }
+        .label {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        #btnMulai {
+            background-color: #2ecc71;
+            color: white;
+        }
+        #btnBerhenti {
+            background-color: #e74c3c;
+            color: white;
+            display: none;
+        }
+        #status {
+            font-style: italic;
+            color: #e67e22;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Pencatat Jarak Jalan</h2>
+        
+        <!-- Peringatan jika dibuka sebagai file lokal -->
+        <div class="warning" id="warningBox" style="display:none;">
+            ⚠️ <b>Perhatian:</b> Anda membuka file ini secara langsung (`content://` / `file://`). GPS kemungkinan besar akan diblokir oleh Android. Harap gunakan web server lokal atau hosting gratis (seperti Netlify Drop).
+        </div>
+
+        <div class="card">
+            <div class="label">Total Jarak Tempuh</div>
+            <div class="value" id="jarak">0.00</div>
+            <div class="label" id="satuan">Meter</div>
+        </div>
+
+        <div class="card">
+            <div class="label">Akurasi GPS</div>
+            <div id="akurasi" style="font-weight: bold;">-</div>
+        </div>
+
+        <button id="btnMulai" onclick="mulaiLacak()">Mulai Jalan</button>
+        <button id="btnBerhenti" onclick="berhentiLacak()">Berhenti</button>
+        
+        <div id="status">Status: Standby</div>
+    </div>
+
+    <script>
+        // Deteksi awal jika dibuka langsung dari file lokal
+        if (window.location.protocol === 'file:' || window.location.protocol === 'content:') {
+            document.getElementById('warningBox').style.display = 'block';
+        }
+
+        let watchID = null;
+        let totalJarak = 0;
+        let koordinatSebelumnya = null;
+
+        function hitungJarak(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Radius bumi dalam meter
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; 
+        }
+
+        function mulaiLacak() {
+            if (!("geolocation" in navigator)) {
+                alert("Browser Anda tidak mendukung Geolocation.");
+                return;
+            }
+
+            document.getElementById("btnMulai").style.display = "none";
+            document.getElementById("btnBerhenti").style.display = "block";
+            document.getElementById("status").innerText = "Status: Meminta izin & mencari GPS...";
+            
+            totalJarak = 0;
+            koordinatSebelumnya = null;
+
+            watchID = navigator.geolocation.watchPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const akurasi = position.coords.accuracy;
+
+                    document.getElementById("status").innerText = "Status: Melacak (GPS Aktif)";
+                    document.getElementById("akurasi").innerText = akurasi.toFixed(1) + " meter";
+
+                    // Filter akurasi di bawah 30 meter agar lebih toleran di dalam/luar ruangan
+                    if (akurasi <= 30) {
+                        if (koordinatSebelumnya) {
+                            const jarakTambah = hitungJarak(
+                                koordinatSebelumnya.lat, 
+                                koordinatSebelumnya.lon, 
+                                lat, 
+                                lon
+                            );
+                            
+                            // Abaikan pergerakan di bawah 1 meter untuk mengurangi noise GPS
+                            if (jarakTambah > 1) {
+                                totalJarak += jarakTambah;
+                                koordinatSebelumnya = { lat, lon };
+                            }
+                        } else {
+                            koordinatSebelumnya = { lat, lon };
+                        }
+
+                        let tampilanJarak = totalJarak;
+                        let labelSatuan = "Meter";
+                        if (totalJarak >= 1000) {
+                            tampilanJarak = totalJarak / 1000;
+                            labelSatuan = "Kilometer";
+                        }
+
+                        document.getElementById("jarak").innerText = tampilanJarak.toFixed(2);
+                        document.getElementById("satuan").innerText = labelSatuan;
+                    }
+                },
+                (error) => {
+                    let pesanError = "Gagal mendeteksi lokasi.";
+                    if (error.code === error.PERMISSION_DENIED) {
+                        pesanError = "Izin lokasi ditolak. Harap izinkan akses GPS di pengaturan browser.";
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        pesanError = "Informasi lokasi tidak tersedia. Pastikan GPS HP aktif.";
+                    } else if (error.code === error.TIMEOUT) {
+                        pesanError = "Waktu permintaan GPS habis (Timeout). Coba di area terbuka.";
+                    }
+                    
+                    alert(pesanError + " (" + error.message + ")");
+                    berhentiLacak();
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 15000
+                }
+            );
+        }
+
+        function berhentiLacak() {
+            if (watchID !== null) {
+                navigator.geolocation.clearWatch(watchID);
+                watchID = null;
+            }
+            document.getElementById("btnMulai").style.display = "block";
+            document.getElementById("btnBerhenti").style.display = "none";
+            document.getElementById("status").innerText = "Status: Selesai / Berhenti";
+        }
+    </script>
+</body>
+</html>
