@@ -3,208 +3,315 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pengukur Jarak Jalan Kaki</title>
+    <title>Pengingat Belanja Counter</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f7f6;
+            max-width: 500px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #fff;
             color: #333;
-            text-align: center;
-            padding: 20px;
-            margin: 0;
-        }
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            -webkit-user-select: none;
+            user-select: none;
         }
         h2 {
-            color: #2c3e50;
+            margin-bottom: 5px;
+            color: #222;
         }
-        .card {
-            background: #eef2f3;
-            margin: 15px 0;
-            padding: 15px;
-            border-radius: 8px;
+        p.subtitle {
+            color: #666;
+            font-size: 13px;
+            margin-top: 0;
+            margin-bottom: 20px;
         }
-        .value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #27ae60;
+        .input-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
         }
-        .label {
-            font-size: 0.9em;
-            color: #7f8c8d;
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        input[type="text"]:focus {
+            border-color: #007bff;
         }
         button {
-            width: 100%;
-            padding: 12px;
-            font-size: 1em;
+            background: #007bff;
+            color: white;
             border: none;
-            border-radius: 6px;
+            padding: 10px 16px;
+            font-size: 14px;
             cursor: pointer;
-            margin-top: 10px;
+            border-radius: 4px;
             font-weight: bold;
         }
-        #btnMulai {
-            background-color: #2ecc71;
-            color: white;
+        button:hover { background: #0056b3; }
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
-        #btnBerhenti {
-            background-color: #e74c3c;
-            color: white;
+        li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 15px;
+            gap: 6px;
+        }
+        .item-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            overflow: hidden;
+        }
+        li span.teks-barang {
+            flex: 1;
+            word-break: break-word;
+        }
+        .selesai {
+            text-decoration: line-through;
+            color: #aaa;
+        }
+        
+        /* Sembunyikan semua checkbox secara default */
+        .checkbox-tandai {
             display: none;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
         }
-        #status {
-            font-style: italic;
-            color: #e67e22;
-            margin-top: 10px;
-            font-size: 0.9em;
+        
+        ul.tampil-semua .checkbox-tandai {
+            display: inline-block;
         }
-        .warning {
-            background-color: #fff3cd;
-            color: #856404;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 0.85em;
-            margin-bottom: 15px;
-            text-align: left;
+
+        .btn-action {
+            border: none;
+            font-size: 11px;
+            cursor: pointer;
+            padding: 4px 7px;
+            border-radius: 3px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .btn-shopee {
+            background: #ee4d2d;
+            color: white;
+        }
+        .btn-shopee:hover { background: #d73211; }
+        
+        .btn-google {
+            background: #4285F4;
+            color: white;
+        }
+        .btn-google:hover { background: #3367d6; }
+
+        .btn-hapus-item {
+            background: #dc3545;
+            color: white;
+            font-size: 15px;
+            padding: 2px 6px;
+        }
+        .btn-hapus-item:hover { background: #c82333; }
+        
+        .footer-action {
+            margin-top: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn-footer-group {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-hapus-checked {
+            background: #dc3545;
+            font-size: 13px;
+            padding: 8px 12px;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .btn-hapus-checked:hover { background: #c82333; }
+
+        .btn-batal-checked {
+            background: #f0ad4e;
+            font-size: 13px;
+            padding: 8px 12px;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .btn-batal-checked:hover { background: #ec971f; }
+
+        .kosong {
+            text-align: center;
+            color: #888;
+            padding: 20px;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>Pencatat Jarak Jalan</h2>
-        
-        <!-- Peringatan jika dibuka sebagai file lokal -->
-        <div class="warning" id="warningBox" style="display:none;">
-            ⚠️ <b>Perhatian:</b> Anda membuka file ini secara langsung (`content://` / `file://`). GPS kemungkinan besar akan diblokir oleh Android. Harap gunakan web server lokal atau hosting gratis (seperti Netlify Drop).
-        </div>
+    <h2>📌 Pengingat Belanja Counter</h2>
+    <p class="subtitle">Tekan & tahan salah satu nama barang untuk memunculkan/menyembunyikan kotak centang.</p>
 
-        <div class="card">
-            <div class="label">Total Jarak Tempuh</div>
-            <div class="value" id="jarak">0.00</div>
-            <div class="label" id="satuan">Meter</div>
-        </div>
+    <!-- Form Input Cepat -->
+    <form id="formIngat" class="input-box">
+        <input type="text" id="namaBarang" placeholder="Contoh: Charger Vivan Type-C..." required autocomplete="off">
+        <button type="submit">Tambah</button>
+    </form>
 
-        <div class="card">
-            <div class="label">Akurasi GPS</div>
-            <div id="akurasi" style="font-weight: bold;">-</div>
-        </div>
+    <!-- Daftar Barang -->
+    <ul id="listBarang">
+        <!-- Item akan muncul di sini secara otomatis -->
+    </ul>
+    
+    <div id="pesanKosong" class="kosong">Belum ada daftar pengingat.</div>
 
-        <button id="btnMulai" onclick="mulaiLacak()">Mulai Jalan</button>
-        <button id="btnBerhenti" onclick="berhentiLacak()">Berhenti</button>
-        
-        <div id="status">Status: Standby</div>
+    <!-- Tombol Bawah -->
+    <div class="footer-action">
+        <button type="button" class="btn-hapus-checked" onclick="hapusYangDitandai()">Hapus</button>
+        <div class="btn-footer-group">
+            <button type="button" class="btn-batal-checked" onclick="batalSemuaCentang()">Batal</button>
+        </div>
     </div>
 
     <script>
-        // Deteksi awal jika dibuka langsung dari file lokal
-        if (window.location.protocol === 'file:' || window.location.protocol === 'content:') {
-            document.getElementById('warningBox').style.display = 'block';
+        let daftar = JSON.parse(localStorage.getItem('pengingatBelanjaFooterOpt')) || [];
+
+        const form = document.getElementById('formIngat');
+        const inputBarang = document.getElementById('namaBarang');
+        const listBarang = document.getElementById('listBarang');
+        const pesanKosong = document.getElementById('pesanKosong');
+
+        function render() {
+            listBarang.innerHTML = '';
+
+            if (daftar.length === 0) {
+                pesanKosong.style.display = 'block';
+            } else {
+                pesanKosong.style.display = 'none';
+            }
+
+            daftar.forEach((item, index) => {
+                let keyword = encodeURIComponent(item.teks);
+                let linkShopee = `https://shopee.co.id/search?keyword=${keyword}`;
+                let linkGoogle = `https://www.google.com/search?q=${keyword}`;
+                let nomorUrut = index + 1;
+
+                let li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="item-info" id="itemInfo-${index}">
+                        <input type="checkbox" class="checkbox-tandai" ${item.selesai ? 'checked' : ''} onclick="toggleSelesai(event, ${index})">
+                        <span style="font-weight: bold; color: #555; min-width: 20px;">${nomorUrut}.</span>
+                        <span class="teks-barang ${item.selesai ? 'selesai' : ''}">${item.teks}</span>
+                    </div>
+                    <a href="${linkShopee}" target="_blank" class="btn-action btn-shopee" title="Cari di Shopee">Shopee</a>
+                    <a href="${linkGoogle}" target="_blank" class="btn-action btn-google" title="Cari di Google Web">Google</a>
+                    <button class="btn-action btn-hapus-item" onclick="hapusItem(${index})" title="Hapus">&times;</button>
+                `;
+                
+                let itemInfo = li.querySelector(`#itemInfo-${index}`);
+                let timer;
+
+                // Event listener tekan dan tahan (long press) untuk memunculkan semua kotak centang
+                itemInfo.addEventListener('mousedown', () => {
+                    timer = setTimeout(() => {
+                        listBarang.classList.toggle('tampil-semua');
+                    }, 600);
+                });
+                itemInfo.addEventListener('touchstart', () => {
+                    timer = setTimeout(() => {
+                        listBarang.classList.toggle('tampil-semua');
+                    }, 600);
+                });
+
+                itemInfo.addEventListener('mouseup', () => clearTimeout(timer));
+                itemInfo.addEventListener('mouseleave', () => clearTimeout(timer));
+                itemInfo.addEventListener('touchend', () => clearTimeout(timer));
+
+                listBarang.appendChild(li);
+            });
+
+            localStorage.setItem('pengingatBelanjaFooterOpt', JSON.stringify(daftar));
         }
 
-        let watchID = null;
-        let totalJarak = 0;
-        let koordinatSebelumnya = null;
+        // Tambah barang baru
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            let teksBarang = inputBarang.value.trim();
+            if (teksBarang) {
+                daftar.push({ teks: teksBarang, selesai: false });
+                inputBarang.value = '';
+                render();
+            }
+        });
 
-        function hitungJarak(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // Radius bumi dalam meter
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = 
-                Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c; 
+        // Centang selesai / belum
+        function toggleSelesai(event, index) {
+            event.stopPropagation();
+            daftar[index].selesai = !daftar[index].selesai;
+            render();
         }
 
-        function mulaiLacak() {
-            if (!("geolocation" in navigator)) {
-                alert("Browser Anda tidak mendukung Geolocation.");
+        // Hapus satu item secara manual via tombol silang (x) di samping
+        function hapusItem(index) {
+            daftar.splice(index, 1);
+            render();
+        }
+
+        // Tombol "Hapus" di bawah: menghapus item-item yang sudah ditandai/dicentang saja
+        function hapusYangDitandai() {
+            let adaYangDicentang = daftar.some(item => item.selesai);
+            if (!adaYangDicentang) {
+                alert('Tidak ada item yang ditandai untuk dihapus.');
                 return;
             }
-
-            document.getElementById("btnMulai").style.display = "none";
-            document.getElementById("btnBerhenti").style.display = "block";
-            document.getElementById("status").innerText = "Status: Meminta izin & mencari GPS...";
-            
-            totalJarak = 0;
-            koordinatSebelumnya = null;
-
-            watchID = navigator.geolocation.watchPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    const akurasi = position.coords.accuracy;
-
-                    document.getElementById("status").innerText = "Status: Melacak (GPS Aktif)";
-                    document.getElementById("akurasi").innerText = akurasi.toFixed(1) + " meter";
-
-                    // Filter akurasi di bawah 30 meter agar lebih toleran di dalam/luar ruangan
-                    if (akurasi <= 30) {
-                        if (koordinatSebelumnya) {
-                            const jarakTambah = hitungJarak(
-                                koordinatSebelumnya.lat, 
-                                koordinatSebelumnya.lon, 
-                                lat, 
-                                lon
-                            );
-                            
-                            // Abaikan pergerakan di bawah 1 meter untuk mengurangi noise GPS
-                            if (jarakTambah > 1) {
-                                totalJarak += jarakTambah;
-                                koordinatSebelumnya = { lat, lon };
-                            }
-                        } else {
-                            koordinatSebelumnya = { lat, lon };
-                        }
-
-                        let tampilanJarak = totalJarak;
-                        let labelSatuan = "Meter";
-                        if (totalJarak >= 1000) {
-                            tampilanJarak = totalJarak / 1000;
-                            labelSatuan = "Kilometer";
-                        }
-
-                        document.getElementById("jarak").innerText = tampilanJarak.toFixed(2);
-                        document.getElementById("satuan").innerText = labelSatuan;
-                    }
-                },
-                (error) => {
-                    let pesanError = "Gagal mendeteksi lokasi.";
-                    if (error.code === error.PERMISSION_DENIED) {
-                        pesanError = "Izin lokasi ditolak. Harap izinkan akses GPS di pengaturan browser.";
-                    } else if (error.code === error.POSITION_UNAVAILABLE) {
-                        pesanError = "Informasi lokasi tidak tersedia. Pastikan GPS HP aktif.";
-                    } else if (error.code === error.TIMEOUT) {
-                        pesanError = "Waktu permintaan GPS habis (Timeout). Coba di area terbuka.";
-                    }
-                    
-                    alert(pesanError + " (" + error.message + ")");
-                    berhentiLacak();
-                },
-                {
-                    enableHighAccuracy: true,
-                    maximumAge: 0,
-                    timeout: 15000
-                }
-            );
-        }
-
-        function berhentiLacak() {
-            if (watchID !== null) {
-                navigator.geolocation.clearWatch(watchID);
-                watchID = null;
+            if (confirm('Hapus item yang sudah ditandai?')) {
+                daftar = daftar.filter(item => !item.selesai);
+                render();
             }
-            document.getElementById("btnMulai").style.display = "block";
-            document.getElementById("btnBerhenti").style.display = "none";
-            document.getElementById("status").innerText = "Status: Selesai / Berhenti";
         }
+
+        // Tombol "Batal" di bawah: membatalkan/menghilangkan centang pada semua item yang tadinya ditandai
+        function batalSemuaCentang() {
+            let diubah = false;
+            daftar.forEach(item => {
+                if (item.selesai) {
+                    item.selesai = false;
+                    diubah = true;
+                }
+            });
+            if (!diubah) {
+                alert('Tidak ada centang yang perlu dibatalkan.');
+                return;
+            }
+            render();
+        }
+
+        // Jalankan saat pertama kali dibuka
+        render();
     </script>
+
 </body>
 </html>
