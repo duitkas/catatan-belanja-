@@ -167,20 +167,12 @@
             padding: 20px;
             font-size: 14px;
         }
-        #loading {
-            text-align: center;
-            font-size: 13px;
-            color: #007bff;
-            margin-bottom: 10px;
-            display: none;
-        }
     </style>
 </head>
 <body>
 
     <h2>📌 Pengingat Belanja Counter</h2>
     <p class="subtitle">Tekan & tahan salah satu nama barang untuk memunculkan/menyembunyikan kotak centang.</p>
-    <div id="loading">Memuat data dari server...</div>
 
     <form id="formIngat" class="input-box">
         <input type="text" id="namaBarang" placeholder="Contoh: Charger Vivan Type-C..." required autocomplete="off">
@@ -206,31 +198,21 @@
         const inputBarang = document.getElementById('namaBarang');
         const listBarang = document.getElementById('listBarang');
         const pesanKosong = document.getElementById('pesanKosong');
-        const loading = document.getElementById('loading');
-
-        function tampilkanLoading(status) {
-            loading.style.display = status ? 'block' : 'none';
-        }
 
         // Ambil Data dari Google Sheets
         function ambilData() {
-            tampilkanLoading(true);
             fetch(`${WEB_APP_URL}?action=get`)
                 .then(response => response.json())
                 .then(data => {
-                    // Validasi agar data selalu berupa array
                     if (Array.isArray(data)) {
                         daftar = data;
                     } else {
                         daftar = [];
                     }
                     render();
-                    tampilkanLoading(false);
                 })
                 .catch(error => {
                     console.error('Gagal memuat data:', error);
-                    tampilkanLoading(false);
-                    alert('Gagal terhubung ke server.');
                 });
         }
 
@@ -278,46 +260,57 @@
             });
         }
 
-        // Tambah Barang
+        // Tambah Barang (Instan di layar, sinkron ke cloud)
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             let teksBarang = inputBarang.value.trim();
             if (teksBarang) {
-                tampilkanLoading(true);
+                daftar.push({ teks: teksBarang, selesai: false });
+                render();
+                inputBarang.value = '';
+
                 fetch(`${WEB_APP_URL}?action=add&teks=${encodeURIComponent(teksBarang)}&selesai=false`)
                     .then(res => res.json())
                     .then(data => {
-                        if (Array.isArray(data)) daftar = data;
-                        inputBarang.value = '';
-                        render();
-                        tampilkanLoading(false);
-                    });
+                        if (Array.isArray(data)) {
+                            daftar = data;
+                            render();
+                        }
+                    })
+                    .catch(err => console.error('Gagal menyimpan:', err));
             }
         });
 
         // Toggle Selesai
         function toggleSelesai(event, index) {
             event.stopPropagation();
-            tampilkanLoading(true);
+            daftar[index].selesai = !daftar[index].selesai;
+            render();
+
             fetch(`${WEB_APP_URL}?action=toggle&index=${index}`)
                 .then(res => res.json())
                 .then(data => {
-                    if (Array.isArray(data)) daftar = data;
-                    render();
-                    tampilkanLoading(false);
+                    if (Array.isArray(data)) {
+                        daftar = data;
+                        render();
+                    }
                 });
         }
 
         // Hapus Satu Item
         function hapusItem(index) {
-            tampilkanLoading(true);
+            daftar.splice(index, 1);
+            render();
+
             fetch(`${WEB_APP_URL}?action=delete&index=${index}`)
                 .then(res => res.json())
                 .then(data => {
-                    if (Array.isArray(data)) daftar = data;
-                    render();
-                    tampilkanLoading(false);
-                });
+                    if (Array.isArray(data)) {
+                        daftar = data;
+                        render();
+                    }
+                })
+                .catch(err => console.error('Gagal menghapus:', err));
         }
 
         // Hapus Item yang Dicentang
@@ -328,14 +321,18 @@
                 return;
             }
             if (confirm('Hapus item yang sudah ditandai?')) {
-                tampilkanLoading(true);
+                daftar = daftar.filter(item => !item.selesai);
+                render();
+
                 fetch(`${WEB_APP_URL}?action=deleteChecked`)
                     .then(res => res.json())
                     .then(data => {
-                        if (Array.isArray(data)) daftar = data;
-                        render();
-                        tampilkanLoading(false);
-                    });
+                        if (Array.isArray(data)) {
+                            daftar = data;
+                            render();
+                        }
+                    })
+                    .catch(err => console.error('Gagal menghapus centang:', err));
             }
         }
 
@@ -346,14 +343,18 @@
                 alert('Tidak ada centang yang perlu dibatalkan.');
                 return;
             }
-            tampilkanLoading(true);
+            daftar.forEach(item => item.selesai = false);
+            render();
+
             fetch(`${WEB_APP_URL}?action=batalChecked`)
                 .then(res => res.json())
                 .then(data => {
-                    if (Array.isArray(data)) daftar = data;
-                    render();
-                    tampilkanLoading(false);
-                });
+                    if (Array.isArray(data)) {
+                        daftar = data;
+                        render();
+                    }
+                })
+                .catch(err => console.error('Gagal membatalkan centang:', err));
         }
 
         ambilData();
