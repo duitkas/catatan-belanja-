@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pengingat Belanja Counter</title>
+    <title>Pengingat Belanja Counter (Cloud)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -84,7 +84,6 @@
             color: #aaa;
         }
         
-        /* Sembunyikan semua checkbox secara default */
         .checkbox-tandai {
             display: none;
             width: 18px;
@@ -168,27 +167,30 @@
             padding: 20px;
             font-size: 14px;
         }
+        #loading {
+            text-align: center;
+            font-size: 13px;
+            color: #007bff;
+            margin-bottom: 10px;
+            display: none;
+        }
     </style>
 </head>
 <body>
 
     <h2>📌 Pengingat Belanja Counter</h2>
     <p class="subtitle">Tekan & tahan salah satu nama barang untuk memunculkan/menyembunyikan kotak centang.</p>
+    <div id="loading">Memuat data dari server...</div>
 
-    <!-- Form Input Cepat -->
     <form id="formIngat" class="input-box">
         <input type="text" id="namaBarang" placeholder="Contoh: Charger Vivan Type-C..." required autocomplete="off">
-        <button type="submit">Tambah</button>
+        <button type="submit" id="btnTambah">Tambah</button>
     </form>
 
-    <!-- Daftar Barang -->
-    <ul id="listBarang">
-        <!-- Item akan muncul di sini secara otomatis -->
-    </ul>
+    <ul id="listBarang"></ul>
     
     <div id="pesanKosong" class="kosong">Belum ada daftar pengingat.</div>
 
-    <!-- Tombol Bawah -->
     <div class="footer-action">
         <button type="button" class="btn-hapus-checked" onclick="hapusYangDitandai()">Hapus</button>
         <div class="btn-footer-group">
@@ -197,12 +199,40 @@
     </div>
 
     <script>
-        let daftar = JSON.parse(localStorage.getItem('pengingatBelanjaFooterOpt')) || [];
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx9W6kFEnWFQ4H242gRPj321jBGsK6jiRf4O98EvxVwIbHB47Ul2TgnV25blJe9qrHS/exec";
 
+        let daftar = [];
         const form = document.getElementById('formIngat');
         const inputBarang = document.getElementById('namaBarang');
         const listBarang = document.getElementById('listBarang');
         const pesanKosong = document.getElementById('pesanKosong');
+        const loading = document.getElementById('loading');
+
+        function tampilkanLoading(status) {
+            loading.style.display = status ? 'block' : 'none';
+        }
+
+        // Ambil Data dari Google Sheets
+        function ambilData() {
+            tampilkanLoading(true);
+            fetch(`${WEB_APP_URL}?action=get`)
+                .then(response => response.json())
+                .then(data => {
+                    // Validasi agar data selalu berupa array
+                    if (Array.isArray(data)) {
+                        daftar = data;
+                    } else {
+                        daftar = [];
+                    }
+                    render();
+                    tampilkanLoading(false);
+                })
+                .catch(error => {
+                    console.error('Gagal memuat data:', error);
+                    tampilkanLoading(false);
+                    alert('Gagal terhubung ke server.');
+                });
+        }
 
         function render() {
             listBarang.innerHTML = '';
@@ -214,7 +244,7 @@
             }
 
             daftar.forEach((item, index) => {
-                let keyword = encodeURIComponent(item.teks);
+                let keyword = encodeURIComponent(item.teks || '');
                 let linkShopee = `https://shopee.co.id/search?keyword=${keyword}`;
                 let linkGoogle = `https://www.google.com/search?q=${keyword}`;
                 let nomorUrut = index + 1;
@@ -234,53 +264,63 @@
                 let itemInfo = li.querySelector(`#itemInfo-${index}`);
                 let timer;
 
-                // Event listener tekan dan tahan (long press) untuk memunculkan semua kotak centang
                 itemInfo.addEventListener('mousedown', () => {
-                    timer = setTimeout(() => {
-                        listBarang.classList.toggle('tampil-semua');
-                    }, 600);
+                    timer = setTimeout(() => { listBarang.classList.toggle('tampil-semua'); }, 600);
                 });
                 itemInfo.addEventListener('touchstart', () => {
-                    timer = setTimeout(() => {
-                        listBarang.classList.toggle('tampil-semua');
-                    }, 600);
+                    timer = setTimeout(() => { listBarang.classList.toggle('tampil-semua'); }, 600);
                 });
-
                 itemInfo.addEventListener('mouseup', () => clearTimeout(timer));
                 itemInfo.addEventListener('mouseleave', () => clearTimeout(timer));
                 itemInfo.addEventListener('touchend', () => clearTimeout(timer));
 
                 listBarang.appendChild(li);
             });
-
-            localStorage.setItem('pengingatBelanjaFooterOpt', JSON.stringify(daftar));
         }
 
-        // Tambah barang baru
+        // Tambah Barang
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             let teksBarang = inputBarang.value.trim();
             if (teksBarang) {
-                daftar.push({ teks: teksBarang, selesai: false });
-                inputBarang.value = '';
-                render();
+                tampilkanLoading(true);
+                fetch(`${WEB_APP_URL}?action=add&teks=${encodeURIComponent(teksBarang)}&selesai=false`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (Array.isArray(data)) daftar = data;
+                        inputBarang.value = '';
+                        render();
+                        tampilkanLoading(false);
+                    });
             }
         });
 
-        // Centang selesai / belum
+        // Toggle Selesai
         function toggleSelesai(event, index) {
             event.stopPropagation();
-            daftar[index].selesai = !daftar[index].selesai;
-            render();
+            tampilkanLoading(true);
+            fetch(`${WEB_APP_URL}?action=toggle&index=${index}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) daftar = data;
+                    render();
+                    tampilkanLoading(false);
+                });
         }
 
-        // Hapus satu item secara manual via tombol silang (x) di samping
+        // Hapus Satu Item
         function hapusItem(index) {
-            daftar.splice(index, 1);
-            render();
+            tampilkanLoading(true);
+            fetch(`${WEB_APP_URL}?action=delete&index=${index}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) daftar = data;
+                    render();
+                    tampilkanLoading(false);
+                });
         }
 
-        // Tombol "Hapus" di bawah: menghapus item-item yang sudah ditandai/dicentang saja
+        // Hapus Item yang Dicentang
         function hapusYangDitandai() {
             let adaYangDicentang = daftar.some(item => item.selesai);
             if (!adaYangDicentang) {
@@ -288,29 +328,35 @@
                 return;
             }
             if (confirm('Hapus item yang sudah ditandai?')) {
-                daftar = daftar.filter(item => !item.selesai);
-                render();
+                tampilkanLoading(true);
+                fetch(`${WEB_APP_URL}?action=deleteChecked`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (Array.isArray(data)) daftar = data;
+                        render();
+                        tampilkanLoading(false);
+                    });
             }
         }
 
-        // Tombol "Batal" di bawah: membatalkan/menghilangkan centang pada semua item yang tadinya ditandai
+        // Batalkan Semua Centang
         function batalSemuaCentang() {
-            let diubah = false;
-            daftar.forEach(item => {
-                if (item.selesai) {
-                    item.selesai = false;
-                    diubah = true;
-                }
-            });
+            let diubah = daftar.some(item => item.selesai);
             if (!diubah) {
                 alert('Tidak ada centang yang perlu dibatalkan.');
                 return;
             }
-            render();
+            tampilkanLoading(true);
+            fetch(`${WEB_APP_URL}?action=batalChecked`)
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) daftar = data;
+                    render();
+                    tampilkanLoading(false);
+                });
         }
 
-        // Jalankan saat pertama kali dibuka
-        render();
+        ambilData();
     </script>
 
 </body>
