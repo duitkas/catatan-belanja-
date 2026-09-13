@@ -83,18 +83,15 @@
             text-decoration: line-through;
             color: #aaa;
         }
-        
         .checkbox-tandai {
             display: none;
             width: 18px;
             height: 18px;
             cursor: pointer;
         }
-        
         ul.tampil-semua .checkbox-tandai {
             display: inline-block;
         }
-
         .btn-action {
             border: none;
             font-size: 11px;
@@ -107,72 +104,25 @@
             text-align: center;
             white-space: nowrap;
         }
-        .btn-shopee {
-            background: #ee4d2d;
-            color: white;
-        }
+        .btn-shopee { background: #ee4d2d; color: white; }
         .btn-shopee:hover { background: #d73211; }
-        
-        .btn-google {
-            background: #4285F4;
-            color: white;
-        }
+        .btn-google { background: #4285F4; color: white; }
         .btn-google:hover { background: #3367d6; }
-
-        .btn-hapus-item {
-            background: #dc3545;
-            color: white;
-            font-size: 15px;
-            padding: 2px 6px;
-        }
+        .btn-hapus-item { background: #dc3545; color: white; font-size: 15px; padding: 2px 6px; }
         .btn-hapus-item:hover { background: #c82333; }
-        
         .footer-action {
             margin-top: 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .btn-footer-group {
-            display: flex;
-            gap: 8px;
-        }
-        .btn-hapus-checked {
-            background: #dc3545;
-            font-size: 13px;
-            padding: 8px 12px;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px;
-            font-weight: bold;
-        }
+        .btn-footer-group { display: flex; gap: 8px; }
+        .btn-hapus-checked { background: #dc3545; font-size: 13px; padding: 8px 12px; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
         .btn-hapus-checked:hover { background: #c82333; }
-
-        .btn-batal-checked {
-            background: #f0ad4e;
-            font-size: 13px;
-            padding: 8px 12px;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px;
-            font-weight: bold;
-        }
+        .btn-batal-checked { background: #f0ad4e; font-size: 13px; padding: 8px 12px; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
         .btn-batal-checked:hover { background: #ec971f; }
-
-        .kosong {
-            text-align: center;
-            color: #888;
-            padding: 20px;
-            font-size: 14px;
-        }
-        .status-sync {
-            font-size: 11px;
-            color: #007bff;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
+        .kosong { text-align: center; color: #888; padding: 20px; font-size: 14px; }
+        .status-sync { font-size: 11px; color: #007bff; margin-bottom: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -181,20 +131,14 @@
     <p class="subtitle">Tekan & tahan salah satu nama barang untuk memunculkan/menyembunyikan kotak centang.</p>
     <div id="statusSync" class="status-sync">Menghubungkan ke Cloud...</div>
 
-    <!-- Form Input Cepat -->
     <form id="formIngat" class="input-box">
         <input type="text" id="namaBarang" placeholder="Contoh: Charger Vivan Type-C..." required autocomplete="off">
         <button type="submit" id="btnTambah">Tambah</button>
     </form>
 
-    <!-- Daftar Barang -->
-    <ul id="listBarang">
-        <!-- Item akan muncul di sini secara otomatis -->
-    </ul>
-    
-    <div id="pesanKosong" class="kosong">Memuat data...</div>
+    <ul id="listBarang"></ul>
+    <div id="pesanKosong" class="kosong">Memuat data online...</div>
 
-    <!-- Tombol Bawah -->
     <div class="footer-action">
         <button type="button" class="btn-hapus-checked" onclick="hapusYangDitandai()">Hapus</button>
         <div class="btn-footer-group">
@@ -203,10 +147,9 @@
     </div>
 
     <script>
-        // Menggunakan penyimpanan cloud publik online bersama (JSONBlob)
-        const CLOUD_URL = 'https://jsonblob.com/api/jsonBlob/1344000000000000000'; // ID Publik Bersama
-        let daftar = [];
+        const API_URL = "https://script.google.com/macros/s/AKfycbw6Pw8lOZl7GYikNKEV7of4AXHSE90e2XNzcQXeDZoyKlyrwtiMQtnoyhXamWlAn40o5A/exec";
 
+        let daftar = [];
         const form = document.getElementById('formIngat');
         const inputBarang = document.getElementById('namaBarang');
         const listBarang = document.getElementById('listBarang');
@@ -214,36 +157,45 @@
         const statusSync = document.getElementById('statusSync');
         const btnTambah = document.getElementById('btnTambah');
 
-        async function muatDataCloud() {
+        async function ambilDataCloud() {
             statusSync.textContent = "Mengambil data dari Cloud...";
             try {
-                let response = await fetch("https://api.ipify.org?format=json"); // Dummy cek koneksi internet
-                let res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://httpbin.org/json'));
-                
-                // Fallback menggunakan penyimpanan publik bersama berbasis API cross-browser
-                let localCloud = localStorage.getItem('counter_shared_db');
-                if (localCloud) {
-                    daftar = JSON.parse(localCloud);
+                // Menggunakan layanan corsproxy publik agar tembus pembatasan browser
+                let proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(API_URL);
+                let response = await fetch(proxyUrl);
+                let json = await response.json();
+                if (json.contents) {
+                    daftar = JSON.parse(json.contents);
+                    if (!Array.isArray(daftar)) daftar = [];
+                } else {
+                    daftar = [];
                 }
                 render();
-                statusSync.textContent = "Status: Online & Sinkron";
-            } catch (err) {
-                statusSync.textContent = "Gagal memuat cloud.";
+                statusSync.textContent = "Status: Online & Sinkron (Google Sheets)";
+            } catch (error) {
+                statusSync.textContent = "Status: Gagal memuat dari Cloud.";
+                pesanKosong.textContent = "Gagal terhubung ke server online.";
             }
         }
 
-        // Fungsi simpan otomatis ke server penyimpanan bersama
-        function simpanDataCloud() {
-            localStorage.setItem('counter_shared_db', JSON.stringify(daftar));
-            // Menyimpan juga ke Session/Local Storage global terintegrasi web viewer
-            render();
+        async function simpanDataCloud() {
+            statusSync.textContent = "Menyimpan ke Cloud...";
+            btnTambah.disabled = true;
+            try {
+                await fetch(API_URL, {
+                    method: "POST",
+                    mode: "no-cors", // Mencegah error CORS saat mengirim data POST
+                    body: JSON.stringify(daftar)
+                });
+                statusSync.textContent = "Status: Online & Sinkron (Google Sheets)";
+            } catch (error) {
+                statusSync.textContent = "Status: Gagal menyimpan perubahan.";
+            }
+            btnTambah.disabled = false;
         }
-
-        const formIngat = document.getElementById('formIngat');
 
         function render() {
             listBarang.innerHTML = '';
-
             if (daftar.length === 0) {
                 pesanKosong.style.display = 'block';
             } else {
@@ -272,14 +224,10 @@
                 let timer;
 
                 itemInfo.addEventListener('mousedown', () => {
-                    timer = setTimeout(() => {
-                        listBarang.classList.toggle('tampil-semua');
-                    }, 600);
+                    timer = setTimeout(() => { listBarang.classList.toggle('tampil-semua'); }, 600);
                 });
                 itemInfo.addEventListener('touchstart', () => {
-                    timer = setTimeout(() => {
-                        listBarang.classList.toggle('tampil-semua');
-                    }, 600);
+                    timer = setTimeout(() => { listBarang.classList.toggle('tampil-semua'); }, 600);
                 });
 
                 itemInfo.addEventListener('mouseup', () => clearTimeout(timer));
@@ -343,20 +291,11 @@
             simpanDataCloud();
         }
 
-        // Jalankan saat halaman dimuat
-        muatDataCloud();
-        
-        // Sinkronisasi otomatis berkala setiap 3 detik untuk mendeteksi perubahan dari HP lain
-        setInterval(() => {
-            let saved = localStorage.getItem('counter_shared_db');
-            if (saved) {
-                let parsed = JSON.parse(saved);
-                if (JSON.stringify(parsed) !== JSON.stringify(daftar)) {
-                    daftar = parsed;
-                    render();
-                }
-            }
-        }, 3000);
+        // Ambil data pertama kali saat halaman dibuka
+        ambilDataCloud();
+
+        // Auto-refresh data dari cloud setiap 5 detik agar sinkron secara real-time
+        setInterval(ambilDataCloud, 5000);
     </script>
 
 </body>
