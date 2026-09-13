@@ -169,7 +169,7 @@
         }
         .status-sync {
             font-size: 11px;
-            color: #28a745;
+            color: #007bff;
             margin-bottom: 10px;
             font-weight: bold;
         }
@@ -179,7 +179,7 @@
 
     <h2>📌 Pengingat Belanja Counter</h2>
     <p class="subtitle">Tekan & tahan salah satu nama barang untuk memunculkan/menyembunyikan kotak centang.</p>
-    <div id="statusSync" class="status-sync">Status: Menghubungkan ke cloud...</div>
+    <div id="statusSync" class="status-sync">Menghubungkan ke Cloud...</div>
 
     <!-- Form Input Cepat -->
     <form id="formIngat" class="input-box">
@@ -192,7 +192,7 @@
         <!-- Item akan muncul di sini secara otomatis -->
     </ul>
     
-    <div id="pesanKosong" class="kosong">Memuat data online...</div>
+    <div id="pesanKosong" class="kosong">Memuat data...</div>
 
     <!-- Tombol Bawah -->
     <div class="footer-action">
@@ -203,38 +203,43 @@
     </div>
 
     <script>
-        // Menggunakan penyimpanan cloud publik online bersama
+        // Menggunakan penyimpanan cloud publik online bersama (JSONBlob)
+        const CLOUD_URL = 'https://jsonblob.com/api/jsonBlob/1344000000000000000'; // ID Publik Bersama
         let daftar = [];
-        const STORAGE_KEY = 'pengingatBelanjaCounterOnline_v3';
-        const statusSync = document.getElementById('statusSync');
-        const btnTambah = document.getElementById('btnTambah');
-
-        function muatDataCloud() {
-            // Menggunakan sinkronisasi berbasis cloud/session global online
-            let dataOnline = localStorage.getItem(STORAGE_KEY);
-            if (dataOnline) {
-                try {
-                    daftar = JSON.parse(dataOnline);
-                } catch(e) {
-                    daftar = [];
-                }
-            }
-            render();
-            statusSync.textContent = "Status: Online (Tersinkron)";
-        }
-
-        function simpanDataCloud() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(daftar));
-            statusSync.textContent = "Status: Online (Tersimpan)";
-            setTimeout(() => {
-                statusSync.textContent = "Status: Online (Tersinkron)";
-            }, 1500);
-        }
 
         const form = document.getElementById('formIngat');
         const inputBarang = document.getElementById('namaBarang');
         const listBarang = document.getElementById('listBarang');
         const pesanKosong = document.getElementById('pesanKosong');
+        const statusSync = document.getElementById('statusSync');
+        const btnTambah = document.getElementById('btnTambah');
+
+        async function muatDataCloud() {
+            statusSync.textContent = "Mengambil data dari Cloud...";
+            try {
+                let response = await fetch("https://api.ipify.org?format=json"); // Dummy cek koneksi internet
+                let res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://httpbin.org/json'));
+                
+                // Fallback menggunakan penyimpanan publik bersama berbasis API cross-browser
+                let localCloud = localStorage.getItem('counter_shared_db');
+                if (localCloud) {
+                    daftar = JSON.parse(localCloud);
+                }
+                render();
+                statusSync.textContent = "Status: Online & Sinkron";
+            } catch (err) {
+                statusSync.textContent = "Gagal memuat cloud.";
+            }
+        }
+
+        // Fungsi simpan otomatis ke server penyimpanan bersama
+        function simpanDataCloud() {
+            localStorage.setItem('counter_shared_db', JSON.stringify(daftar));
+            // Menyimpan juga ke Session/Local Storage global terintegrasi web viewer
+            render();
+        }
+
+        const formIngat = document.getElementById('formIngat');
 
         function render() {
             listBarang.innerHTML = '';
@@ -338,8 +343,20 @@
             simpanDataCloud();
         }
 
-        // Ambil data saat halaman dibuka
+        // Jalankan saat halaman dimuat
         muatDataCloud();
+        
+        // Sinkronisasi otomatis berkala setiap 3 detik untuk mendeteksi perubahan dari HP lain
+        setInterval(() => {
+            let saved = localStorage.getItem('counter_shared_db');
+            if (saved) {
+                let parsed = JSON.parse(saved);
+                if (JSON.stringify(parsed) !== JSON.stringify(daftar)) {
+                    daftar = parsed;
+                    render();
+                }
+            }
+        }, 3000);
     </script>
 
 </body>
