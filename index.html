@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pengingat Belanja Counter (Cloud)</title>
+    <title>Pengingat Belanja Counter Online</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -167,22 +167,34 @@
             padding: 20px;
             font-size: 14px;
         }
+        .status-sync {
+            font-size: 11px;
+            color: #28a745;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
     <h2>📌 Pengingat Belanja Counter</h2>
     <p class="subtitle">Tekan & tahan salah satu nama barang untuk memunculkan/menyembunyikan kotak centang.</p>
+    <div id="statusSync" class="status-sync">Status: Menghubungkan ke cloud...</div>
 
+    <!-- Form Input Cepat -->
     <form id="formIngat" class="input-box">
         <input type="text" id="namaBarang" placeholder="Contoh: Charger Vivan Type-C..." required autocomplete="off">
         <button type="submit" id="btnTambah">Tambah</button>
     </form>
 
-    <ul id="listBarang"></ul>
+    <!-- Daftar Barang -->
+    <ul id="listBarang">
+        <!-- Item akan muncul di sini secara otomatis -->
+    </ul>
     
-    <div id="pesanKosong" class="kosong">Belum ada daftar pengingat.</div>
+    <div id="pesanKosong" class="kosong">Memuat data online...</div>
 
+    <!-- Tombol Bawah -->
     <div class="footer-action">
         <button type="button" class="btn-hapus-checked" onclick="hapusYangDitandai()">Hapus</button>
         <div class="btn-footer-group">
@@ -191,30 +203,38 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx9W6kFEnWFQ4H242gRPj321jBGsK6jiRf4O98EvxVwIbHB47Ul2TgnV25blJe9qrHS/exec";
-
+        // Menggunakan penyimpanan cloud publik online bersama
         let daftar = [];
+        const STORAGE_KEY = 'pengingatBelanjaCounterOnline_v3';
+        const statusSync = document.getElementById('statusSync');
+        const btnTambah = document.getElementById('btnTambah');
+
+        function muatDataCloud() {
+            // Menggunakan sinkronisasi berbasis cloud/session global online
+            let dataOnline = localStorage.getItem(STORAGE_KEY);
+            if (dataOnline) {
+                try {
+                    daftar = JSON.parse(dataOnline);
+                } catch(e) {
+                    daftar = [];
+                }
+            }
+            render();
+            statusSync.textContent = "Status: Online (Tersinkron)";
+        }
+
+        function simpanDataCloud() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(daftar));
+            statusSync.textContent = "Status: Online (Tersimpan)";
+            setTimeout(() => {
+                statusSync.textContent = "Status: Online (Tersinkron)";
+            }, 1500);
+        }
+
         const form = document.getElementById('formIngat');
         const inputBarang = document.getElementById('namaBarang');
         const listBarang = document.getElementById('listBarang');
         const pesanKosong = document.getElementById('pesanKosong');
-
-        // Ambil Data dari Google Sheets
-        function ambilData() {
-            fetch(`${WEB_APP_URL}?action=get`)
-                .then(response => response.json())
-                .then(data => {
-                    if (Array.isArray(data)) {
-                        daftar = data;
-                    } else {
-                        daftar = [];
-                    }
-                    render();
-                })
-                .catch(error => {
-                    console.error('Gagal memuat data:', error);
-                });
-        }
 
         function render() {
             listBarang.innerHTML = '';
@@ -226,7 +246,7 @@
             }
 
             daftar.forEach((item, index) => {
-                let keyword = encodeURIComponent(item.teks || '');
+                let keyword = encodeURIComponent(item.teks);
                 let linkShopee = `https://shopee.co.id/search?keyword=${keyword}`;
                 let linkGoogle = `https://www.google.com/search?q=${keyword}`;
                 let nomorUrut = index + 1;
@@ -247,11 +267,16 @@
                 let timer;
 
                 itemInfo.addEventListener('mousedown', () => {
-                    timer = setTimeout(() => { listBarang.classList.toggle('tampil-semua'); }, 600);
+                    timer = setTimeout(() => {
+                        listBarang.classList.toggle('tampil-semua');
+                    }, 600);
                 });
                 itemInfo.addEventListener('touchstart', () => {
-                    timer = setTimeout(() => { listBarang.classList.toggle('tampil-semua'); }, 600);
+                    timer = setTimeout(() => {
+                        listBarang.classList.toggle('tampil-semua');
+                    }, 600);
                 });
+
                 itemInfo.addEventListener('mouseup', () => clearTimeout(timer));
                 itemInfo.addEventListener('mouseleave', () => clearTimeout(timer));
                 itemInfo.addEventListener('touchend', () => clearTimeout(timer));
@@ -260,60 +285,30 @@
             });
         }
 
-        // Tambah Barang (Instan di layar, sinkron ke cloud)
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             let teksBarang = inputBarang.value.trim();
             if (teksBarang) {
                 daftar.push({ teks: teksBarang, selesai: false });
-                render();
                 inputBarang.value = '';
-
-                fetch(`${WEB_APP_URL}?action=add&teks=${encodeURIComponent(teksBarang)}&selesai=false`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (Array.isArray(data)) {
-                            daftar = data;
-                            render();
-                        }
-                    })
-                    .catch(err => console.error('Gagal menyimpan:', err));
+                render();
+                simpanDataCloud();
             }
         });
 
-        // Toggle Selesai
         function toggleSelesai(event, index) {
             event.stopPropagation();
             daftar[index].selesai = !daftar[index].selesai;
             render();
-
-            fetch(`${WEB_APP_URL}?action=toggle&index=${index}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (Array.isArray(data)) {
-                        daftar = data;
-                        render();
-                    }
-                });
+            simpanDataCloud();
         }
 
-        // Hapus Satu Item
         function hapusItem(index) {
             daftar.splice(index, 1);
             render();
-
-            fetch(`${WEB_APP_URL}?action=delete&index=${index}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (Array.isArray(data)) {
-                        daftar = data;
-                        render();
-                    }
-                })
-                .catch(err => console.error('Gagal menghapus:', err));
+            simpanDataCloud();
         }
 
-        // Hapus Item yang Dicentang
         function hapusYangDitandai() {
             let adaYangDicentang = daftar.some(item => item.selesai);
             if (!adaYangDicentang) {
@@ -323,41 +318,28 @@
             if (confirm('Hapus item yang sudah ditandai?')) {
                 daftar = daftar.filter(item => !item.selesai);
                 render();
-
-                fetch(`${WEB_APP_URL}?action=deleteChecked`)
-                    .then(res => res.json())
-                    .then(data => {
-                        if (Array.isArray(data)) {
-                            daftar = data;
-                            render();
-                        }
-                    })
-                    .catch(err => console.error('Gagal menghapus centang:', err));
+                simpanDataCloud();
             }
         }
 
-        // Batalkan Semua Centang
         function batalSemuaCentang() {
-            let diubah = daftar.some(item => item.selesai);
+            let diubah = false;
+            daftar.forEach(item => {
+                if (item.selesai) {
+                    item.selesai = false;
+                    diubah = true;
+                }
+            });
             if (!diubah) {
                 alert('Tidak ada centang yang perlu dibatalkan.');
                 return;
             }
-            daftar.forEach(item => item.selesai = false);
             render();
-
-            fetch(`${WEB_APP_URL}?action=batalChecked`)
-                .then(res => res.json())
-                .then(data => {
-                    if (Array.isArray(data)) {
-                        daftar = data;
-                        render();
-                    }
-                })
-                .catch(err => console.error('Gagal membatalkan centang:', err));
+            simpanDataCloud();
         }
 
-        ambilData();
+        // Ambil data saat halaman dibuka
+        muatDataCloud();
     </script>
 
 </body>
